@@ -96,7 +96,6 @@ writePPMImage(int* data, int width, int height, const char *filename, int maxIte
 {
     initialize(maxIterations);
     FILE *fp = fopen(filename, "wb");
-
     // write ppm header
     fprintf(fp, "P6\n");
     fprintf(fp, "%d %d\n", width, height);

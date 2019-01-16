@@ -33,8 +33,10 @@ scaleAndShift(float& x0, float& x1, float& y0, float& y1,
 void usage(const char* progname) {
     printf("Usage: %s [options]\n", progname);
     printf("Program Options:\n");
-    printf("  -v  --view <INT>   Use specified view settings (0-6)\n");
-    printf("  -?  --help         This message\n");
+    printf("  -v  --view <INT>        Use specified view settings (0-6)\n");
+    printf("  -f  --field x0:y0:x1:y1 Specify set boundaries\n");
+    printf("  -o  outfile             Specify output file\n");
+    printf("  -?  --help              This message\n");
 }
 
 bool verifyResult (int *gold, int *result, int width, int height) {
@@ -89,7 +91,9 @@ int main(int argc, char** argv) {
     };
 
     int viewIndex = 0;
-    while ((opt = getopt_long(argc, argv, "v:?", long_options, NULL)) != EOF) {
+    char fname[256];
+    bool have_file = false;
+    while ((opt = getopt_long(argc, argv, "v:f:o:?", long_options, NULL)) != EOF) {
 
         switch (opt) {
         case 'v':
@@ -107,6 +111,20 @@ int main(int argc, char** argv) {
             }
             break;
         }
+	case 'f':
+	{
+	    if (sscanf(optarg, "%f:%f:%f:%f", &x0, &y0, &x1, &y1) != 4) {
+		fprintf(stderr, "Couldn't extract field from '%s'\n", optarg);
+		exit(1);
+	    }
+	    break;
+	}
+	case 'o':
+	{
+	    strcpy(fname, optarg);
+	    have_file = true;
+	    break;
+	}
         case '?':
         default:
             usage(argv[0]);
@@ -114,6 +132,16 @@ int main(int argc, char** argv) {
         }
     }
     // end parsing of commandline options
+
+    if (have_file) {
+	// In this mode, assume goal is to simply generate the output as fast as possible
+	int* output = new int[width*height];
+	mandelbrotParallel(par_funs[3].fun, par_funs[3].unrollCount,
+			   x0, y0, x1, y1, width, iheight, 0, height, maxIterations, output);
+	writePPMImage(output, width, height, fname, maxIterations);
+	delete [] output;
+	exit(0);
+    }
 
 
     int* output_ref = new int[width*height];
@@ -127,7 +155,6 @@ int main(int argc, char** argv) {
     memset(output_ref, 0, width * height * sizeof(int));
     double minRef = 1e30;
     long numIters = 0;
-    char fname[256];
     for (int i = 0; i < numRuns; ++i) {
         double startSeconds = CycleTimer::currentSeconds();
 	numIters = mandelbrotSerial(mandel_ref, x0, y0, x1, y1, width, iheight, 0, iheight, maxIterations, output_ref);

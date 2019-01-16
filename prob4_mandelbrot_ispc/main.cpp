@@ -69,9 +69,11 @@ using namespace ispc;
 void usage(const char* progname) {
     printf("Usage: %s [options]\n", progname);
     printf("Program Options:\n");
-    printf("  -t  --tasks        Run ISPC code implementation with tasks\n");
-    printf("  -v  --view <INT>   Use specified view settings  (1-6)\n");
-    printf("  -?  --help         This message\n");
+    printf("  -t  --tasks             Run ISPC code implementation with tasks\n");
+    printf("  -v  --view <INT>        Use specified view settings (0-6)\n");
+    printf("  -f  --field x0:y0:x1:y1 Specify set boundaries\n");
+    printf("  -o  outfile             Specify output file\n");
+    printf("  -?  --help              This message\n");
 }
 
 
@@ -111,7 +113,8 @@ int main(int argc, char** argv) {
         {0 ,0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "tv:?", long_options, NULL)) != EOF) {
+    bool have_file = false;
+    while ((opt = getopt_long(argc, argv, "tv:f:o:?", long_options, NULL)) != EOF) {
 
         switch (opt) {
         case 't':
@@ -131,6 +134,20 @@ int main(int argc, char** argv) {
             }
             break;
         }
+	case 'f':
+	{
+	    if (sscanf(optarg, "%f:%f:%f:%f", &x0, &y0, &x1, &y1) != 4) {
+		fprintf(stderr, "Couldn't extract field from '%s'\n", optarg);
+		exit(1);
+	    }
+	    break;
+	}
+	case 'o':
+	{
+	    strcpy(fname, optarg);
+	    have_file = true;
+	    break;
+	}
         case '?':
         default:
             usage(argv[0]);
@@ -138,6 +155,17 @@ int main(int argc, char** argv) {
         }
     }
     // end parsing of commandline options
+
+    if (have_file) {
+      int * output = new int[width*height];
+      if (useTasks)
+	mandelbrot_ispc_withtasks(x0, y0, x1, y1, width, iheight, maxIterations, output);
+      else
+        mandelbrot_ispc(x0, y0, x1, y1, width, iheight, maxIterations, output);
+      writePPMImage(output, width, height, fname, maxIterations);
+      delete [] output;
+      exit(0);
+    }
 
     int *output_serial = new int[width*height];
     int *output_ispc = new int[width*height];
@@ -154,7 +182,7 @@ int main(int argc, char** argv) {
     double minSerial = 1e30;
     for (int i = 0; i < numTries; ++i) {
         double startTime = CycleTimer::currentSeconds();
-        mandelbrotSerial(x0, y0, x1, y1, width, height, 0, height, maxIterations, output_serial);
+        mandelbrotSerial(x0, y0, x1, y1, width, iheight, 0, iheight, maxIterations, output_serial);
         double endTime = CycleTimer::currentSeconds();
         minSerial = std::min(minSerial, endTime - startTime);
     }
@@ -173,7 +201,7 @@ int main(int argc, char** argv) {
     double minISPC = 1e30;
     for (int i = 0; i < numTries; ++i) {
         double startTime = CycleTimer::currentSeconds();
-        mandelbrot_ispc(x0, y0, x1, y1, width, height, maxIterations, output_ispc);
+        mandelbrot_ispc(x0, y0, x1, y1, width, iheight, maxIterations, output_ispc);
         double endTime = CycleTimer::currentSeconds();
         minISPC = std::min(minISPC, endTime - startTime);
     }
@@ -204,7 +232,7 @@ int main(int argc, char** argv) {
     double minISPCPar = 1e30;
     for (int i = 0; i < numTries; ++i) {
         double startTime = CycleTimer::currentSeconds();
-        mandelbrot_ispc_par2(x0, y0, x1, y1, width, height, maxIterations, output_ispc_par);
+        mandelbrot_ispc_par2(x0, y0, x1, y1, width, iheight, maxIterations, output_ispc_par);
         double endTime = CycleTimer::currentSeconds();
         minISPCPar = std::min(minISPCPar, endTime - startTime);
     }
@@ -235,7 +263,7 @@ int main(int argc, char** argv) {
         //
         for (int i = 0; i < numTries; ++i) {
             double startTime = CycleTimer::currentSeconds();
-            mandelbrot_ispc_withtasks(x0, y0, x1, y1, width, height, maxIterations, output_ispc_tasks);
+            mandelbrot_ispc_withtasks(x0, y0, x1, y1, width, iheight, maxIterations, output_ispc_tasks);
             double endTime = CycleTimer::currentSeconds();
             minTaskISPC = std::min(minTaskISPC, endTime - startTime);
         }
