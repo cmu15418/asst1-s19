@@ -123,13 +123,8 @@ int main(int argc, char** argv) {
         case 'v':
         {
             viewIndex = atoi(optarg);
-            if (viewIndex >= 0 && viewIndex < VIEWCNT)  {
-                float scaleValue = scaleValues[viewIndex];
-                float shiftX = shiftXs[viewIndex];
-                float shiftY = shiftYs[viewIndex];
-                scaleAndShift(x0, x1, y0, y1, scaleValue, shiftX, shiftY);
-            } else {
-                fprintf(stderr, "Invalid view index\n");
+            if (viewIndex < 0 || viewIndex >= VIEWCNT)  {
+                fprintf(stderr, "Invalid view index %d\n", viewIndex);
                 return 1;
             }
             break;
@@ -155,6 +150,11 @@ int main(int argc, char** argv) {
         }
     }
     // end parsing of commandline options
+    float scaleValue = scaleValues[viewIndex];
+    float shiftX = shiftXs[viewIndex];
+    float shiftY = shiftYs[viewIndex];
+    scaleAndShift(x0, x1, y0, y1, scaleValue, shiftX, shiftY);
+
 
     if (have_file) {
       int * output = new int[width*height];
